@@ -3,21 +3,73 @@
 
 #define bufSize 1024
 #define colunaBarra 4
+#define caminhoDadosBarra 49
+#define caminhoDadosNodal 42
+
+void decideRede(char *barra, char *nodal) {
+	char *p, s[100];
+    int n;
+    printf("Decida a Rede\n");
+    printf("   |-> 1) Stevenson\n");
+    printf("   |-> 2) Reticulada\n");
+    printf("   |-> 3) Distribiucao Primaria\n");
+    printf("   |-> 4) Distribiucao Primaria Secundaria\n");
+    printf("Favor escolha uma opcao: ");
+    //pega do teclado
+    while (fgets(s, sizeof(s), stdin)) {
+        n = strtol(s, &p, 10);
+        // caso não seja int
+        if ((p == s || *p != '\n')) {
+            printf("Favor escolha uma opcao: ");
+        } 
+        // não ser opção válida
+        else if (n != 1 && n!= 2 && n!= 3 && n!=4) {
+        	printf("Favor escolha uma opcao: ");
+        } 
+        // sai do loop
+        else break;
+    }
+    if (n == 1) {
+    	strcpy(barra, "Redes/1_Stevensonn/1_Stevensonn_DadosBarras.txt");
+    	strcpy(nodal, "Redes/1_Stevensonn/1_Stevensonn_Ynodal.txt");
+    }
+    else if (n == 2) {
+    	strcpy(barra, "Redes/2_Reticulada/2_Reticulada_DadosBarras.txt");
+    	strcpy(barra, "Redes/2_Reticulada/2_Reticulada_Ynodal.txt");
+    }
+    else if (n == 3) {
+    	strcpy(barra, "Redes/3_DiPrimaria/3_DiPrimaria_DadosBarras.txt");
+    	strcpy(barra, "Redes/3_DiPrimaria/3_DiPrimaria_Ynodal.txt");
+    }
+    else {
+    	strcpy(barra, "Redes/4_Secundaria/4_Secundaria_DadosBarra.txt");
+    	strcpy(barra, "Redes/4_Secundaria/4_Secundaria_Ynodal.txt");
+    }
+}
 
 
-void leDadosBarra(FILE *fp, double **matriz)
+void leNumeroDeLinhas(FILE *fp, int *linhas, char *barra)
+{
+	fopen_s(&fp, barra, "r");
+	if (fp == NULL)
+	{ // Open source file.
+		perror("fopen source-file");
+		return;
+	}
+
+	fscanf_s(fp, "%d", linhas);
+	printf("%d\n", *linhas);
+
+	fclose(fp);
+}
+
+void leDadosBarra(FILE *fp, double **matriz,  char *barra)
 {
 	int numeroBarras = 0;
 	int i, j;
-	int barraNumero;
-	int tipoBarra;
-	double tensaoNominalFase;
-	double parametro1;
-	double parametro2;
-	//char buf[bufSize];
-	
+	int barraNumero;	
 
-	fopen_s(&fp, "Redes/1_Stevenson/1_Stevenson_DadosBarras.txt", "r");
+	fopen_s(&fp, barra, "r");
 	if (fp == NULL)
 	{ // Open source file.
 		perror("fopen source-file");
@@ -25,11 +77,9 @@ void leDadosBarra(FILE *fp, double **matriz)
 	}
 
 	fscanf_s(fp, "%d", &numeroBarras);
-	printf("%d\n", numeroBarras);
 
 	for (i = 0; i < numeroBarras; i++) {
 		fscanf_s(fp, "%d", &barraNumero);
-		printf("NB = %d\n", barraNumero);
 		for (j = 0; j < colunaBarra; j++) {
 			fscanf_s(fp, "%lf", &matriz[i][j]);
 		}
@@ -63,15 +113,19 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 int main(int argc, char *argv[])
 {
 	FILE* fp;
-	double **dadosBarra = inicializa_Matrix(5, colunaBarra);
-
-	//leDadosBarra(fp, dadosBarra);
+	int linhasBarra;
 	
-	leDadosBarra(fp, dadosBarra);
-	imprimir_matriz(dadosBarra, 5, colunaBarra);
+	char arquivoBarra[caminhoDadosBarra];
+	char arquivoNodal[caminhoDadosNodal];
+	decideRede(arquivoBarra, arquivoNodal);
+	//printf("%s\n", arquivoBarra);
+	leNumeroDeLinhas(fp, &linhasBarra, arquivoBarra);
+	system("pause");
+	double **dadosBarra = inicializa_Matrix(linhasBarra, colunaBarra);
+	
+	leDadosBarra(fp, dadosBarra, arquivoBarra);
+	imprimir_matriz(dadosBarra, linhasBarra, colunaBarra);
 
 	system("pause");
 	return 0;
 }
-
-
