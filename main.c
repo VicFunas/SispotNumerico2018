@@ -214,7 +214,7 @@ void calculaF(int nPQ, int nPV, double ** matrizBarra, double ** matrizB,  doubl
 	for (int i = 0; i < nPQ; i++)
 	{
 		double fq = 0;
-		for (int i = 0; i < tamanho; ++i)
+		for (int j = 0; j < tamanho; j++)
 		{
 			double thetaKJ = fase[j] - fase[i];
 			fq += tensao[j]*(matrizG[i][j]*cos(thetaKJ) + matrizB[i][j]*sin(thetaKJ));
@@ -286,13 +286,14 @@ int main(int argc, char *argv[])
 	//imprimir_matrizAdmitancias(bTrechos, linhasBarra, linhasBarra);
 	printf("\n");
 	//imprimir_vetor(tensao, linhasBarra);
-	//imprimir_vetor(pEsp, linhasBarra);
 	printf("\n");
 	//imprimir_vetor(angulo, linhasBarra);
 	printf("\n");
-	printf("nPQ = %d", nPQ);
+	//printf("nPQ = %d", nPQ);
 	printf("\n");
-	printf("nPV = %d", nPV);
+	//printf("nPV = %d", nPV);
+	printf("\n");
+	imprimir_vetor(f, nEquacoes);
 	printf("\n");
 
 	system("pause");
