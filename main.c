@@ -194,7 +194,7 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 	return A;
 }
 
-void calculaF(int nPQ, int nPV, double ** matrizBarra, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double *f, int tamanho) {
+void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double *f, int tamanho) {
 	for (int i = 0; i < nPQ+nPV; i++)
 	{
 		double fp = 0;
@@ -217,9 +217,97 @@ void calculaF(int nPQ, int nPV, double ** matrizBarra, double ** matrizB,  doubl
 		for (int j = 0; j < tamanho; j++)
 		{
 			double thetaKJ = fase[j] - fase[i];
-			fq += tensao[j]*(matrizG[i][j]*cos(thetaKJ) + matrizB[i][j]*sin(thetaKJ));
+			fq += tensao[j]*(matrizG[i][j]*sin(thetaKJ) + matrizB[i][j]*cos(thetaKJ));
 		}
 		f[nPQ+nPV+i] = (-1)*tensao[i]*fq;
+	}
+}
+
+void calculaDel(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double **del, int tamanho) {
+	for (int i = 0; i < nPQ+nPV; i++)
+	{
+		double dtheta = 0;
+		for (int j = 0; j < 2*nPQ + nPV; j++)
+		{
+			if(i == j) { // Eq (13) 1 -> dfpj/dthetaj
+				dtheta = 0;
+				for (int k = 0; k < tamanho; k++)
+				{
+					if(k != i) {
+						double thetaKJ = fase[k] - fase[i];
+						dtheta+= tensao[k]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+					}
+				}
+				del[i][j] = tensao[j]*dtheta;
+			}
+			else if (j == nPV + nPQ + i) // Eq (13) 2 -> dfpj/dVj
+			{
+				dtheta = 0;
+				for (int k = 0; k < tamanho; k++)
+				{
+					if(k != i) {
+						double thetaKJ = fase[k] - fase[i];
+						dtheta+= tensao[k]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+					}
+				}
+				del[i][j] = dtheta + 2*tensao[i]*matrizG[i][i];
+			}
+			else if (j < nPV + nPQ) // Eq (13) 3 -> dpfj/dthetak
+			{
+				int k = j;
+				double thetaKJ = fase[k] - fase[i];
+				del[i][j] = (-1)*tensao[i]*tensao[k]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+			}
+			else // Eq (13) 4 -> dfpj/dVk
+			{
+				int k = j - nPQ - nPV;
+				double thetaKJ = fase[k] - fase[i];
+				del[i][j] = tensao[i]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+			}
+		}
+	}
+
+	for (int i = 0; i < nPQ; i++)
+	{
+		double dtheta = 0;
+		for (int j = 0; j < 2*nPQ + nPV; j++)
+		{
+			if(i == j) { // Eq (14) 1 -> dfqj/dthetaj
+				dtheta = 0;
+				for (int k = 0; k < tamanho; k++)
+				{
+					if(k != i) {
+						double thetaKJ = fase[k] - fase[i];
+						dtheta+= tensao[k]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+					}
+				}
+				del[i][j] = tensao[i]*dtheta;
+			}
+			else if (j == nPV + nPQ + i) // Eq (14) 2 -> dfpj/dVj
+			{
+				dtheta = 0;
+				for (int k = 0; k < tamanho; k++)
+				{
+					if(k != i) {
+						double thetaKJ = fase[k] - fase[i];
+						dtheta+= tensao[k]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+					}
+				}
+				del[i][j] = -dtheta - 2*tensao[i]*matrizB[i][i];
+			}
+			else if (j < nPV + nPQ) // Eq (14) 3 -> dpfj/dthetak
+			{
+				int k = j;
+				double thetaKJ = fase[k] - fase[i];
+				del[i][j] = (-1)*tensao[i]*tensao[k]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+			}
+			else // Eq (14) 4 -> dfpj/dVk
+			{
+				int k = j - nPQ - nPV;
+				double thetaKJ = fase[k] - fase[i];
+				del[i][j] = (-1)*tensao[i]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+			}
+		}
 	}
 }
 
@@ -276,7 +364,8 @@ int main(int argc, char *argv[])
 	double * delta = inicializaVetor(nEquacoes);
 
 	// Calcula os valores
-	calculaF(nPQ, nPV, dadosBarra, bTrechos,  gTrechos, tensao, angulo, pEsp, f, linhasBarra);
+	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, linhasBarra);
+	calculaDel(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, del, linhasBarra);
 
 	printf("\n");
 	//imprimir_matriz(dadosBarra, linhasBarra, colunaBarra);
@@ -293,7 +382,9 @@ int main(int argc, char *argv[])
 	printf("\n");
 	//printf("nPV = %d", nPV);
 	printf("\n");
-	imprimir_vetor(f, nEquacoes);
+	//imprimir_vetor(f, nEquacoes);
+	printf("\n");
+	imprimir_matriz(del, nEquacoes, nEquacoes);
 	printf("\n");
 
 	system("pause");
