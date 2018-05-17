@@ -112,6 +112,28 @@ void leDadosTrecho(FILE *file, double **matrizY, double **matrizB, char *nodal)
 	fclose(file);
 }
 
+void inicializaTensao(double *tensao, double *angulo, int tamanho, double **matriz) {
+	for (int i = 0; i < tamanho; ++i)
+	{
+		if(matriz[i][0] == 2) {
+			printf("67 patinete\n");
+			tensao[i] = matriz[i][2];
+			angulo[i] = matriz[i][3];
+		}
+		else if (matriz[i][0] == 1)
+		{
+			printf("dig dig joy dig joy popoy\n");
+			tensao[i] = matriz[i][3];
+			angulo[i] = 0;
+		}
+		else {
+			printf("e pede uma tequila\n");
+			tensao[i] = matriz[i][1];
+			angulo[i] = 0;
+		}
+	}
+}
+
 void imprimir_matriz(double **matriz, int linhas, int colunas) {
 	int i, j;
 	for (i = 0; i < linhas; i++) {
@@ -130,6 +152,21 @@ void imprimir_matrizAdmitancias(double **matriz, int linhas, int colunas) {
 		}
 		printf("\n");
 	}
+}
+
+void imprimir_vetor(double *vetor, int tamanho) {
+	for (int i = 0; i < tamanho; i++) {
+		printf("%.3lf ", vetor[i]);
+	}
+}
+
+double * inicializaVetor(int tamanho) {
+	double * vetor = (double *)malloc(tamanho * sizeof(double));
+	for (int i = 0; i < tamanho; ++i)
+	{
+		vetor[i] = 0;
+	}
+	return vetor;
 }
 
 double ** inicializa_Matrix(int linhasA, int colunasA) {
@@ -155,11 +192,19 @@ int main(int argc, char *argv[])
 	leNumeroDeLinhas(file, &linhasBarra, arquivoBarra);
 
 	double **dadosBarra = inicializa_Matrix(linhasBarra, colunaBarra);
+
+	// matrizes de admitancia
 	double **yTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
 	double **bTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
+
+	//vetores de tensao nominal de fase
+	double *tensao = inicializaVetor(linhasBarra);
+	double *angulo = inicializaVetor(linhasBarra);
 	
 	leDadosBarra(file, dadosBarra, arquivoBarra);
 	leDadosTrecho(file, yTrechos, bTrechos, arquivoNodal);
+
+	inicializaTensao(tensao, angulo, linhasBarra, dadosBarra); // conforme tabela 4
 
 	printf("\n");
 	imprimir_matriz(dadosBarra, linhasBarra, colunaBarra);
@@ -167,6 +212,10 @@ int main(int argc, char *argv[])
 	imprimir_matrizAdmitancias(yTrechos, linhasBarra, linhasBarra);
 	printf("\n");
 	imprimir_matrizAdmitancias(bTrechos, linhasBarra, linhasBarra);
+	printf("\n");
+	imprimir_vetor(tensao, linhasBarra);
+	printf("\n");
+	imprimir_vetor(angulo, linhasBarra);
 
 	system("pause");
 	return 0;
