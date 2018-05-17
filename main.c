@@ -140,9 +140,7 @@ void inicializaPesp(double *pEsp, int tamanho, double **matriz) {
 	for (int i = 0; i < tamanho; ++i)
 	{
 		if(matriz[i][0] == 1) {
-			printf("67 patinete  ");
 			pEsp[j] = matriz[i][2];
-			printf("%.lf\n", matriz[i][2]);
 			j++;
 		}
 	}
@@ -195,7 +193,7 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 	return A;
 }
 
-void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double *f, int tamanho) {
+void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double **f, int tamanho) {
 	for (int i = 0; i < nPQ+nPV; i++)
 	{
 		double fp = 0;
@@ -204,12 +202,12 @@ void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *t
 			double thetaKJ = fase[j] - fase[i];
 			fp += tensao[j]*(matrizG[i][j]*cos(thetaKJ) - matrizB[i][j]*sin(thetaKJ));
 		}
-		f[i] = tensao[i]*fp;
+		f[i][0] = tensao[i]*fp;
 	}
 	// Como os nPV ultimos correspondem às barras PV, em que a potência especificada não é necessariamente nula
 	for (int i = 0; i < nPV; ++i)
 	{
-		f[nPQ+i] = f[nPQ+nPV] - pEsp[i];
+		f[nPQ+i][0] = f[nPQ+nPV][0] - pEsp[i];
 	}
 
 	for (int i = 0; i < nPQ; i++)
@@ -220,11 +218,11 @@ void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *t
 			double thetaKJ = fase[j] - fase[i];
 			fq += tensao[j]*(matrizG[i][j]*sin(thetaKJ) + matrizB[i][j]*cos(thetaKJ));
 		}
-		f[nPQ+nPV+i] = (-1)*tensao[i]*fq;
+		f[nPQ+nPV+i][0] = (-1)*tensao[i]*fq;
 	}
 }
 
-void calculaDel(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double **del, int tamanho) {
+void calculaJacobiano(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double **del, int tamanho) {
 	for (int i = 0; i < nPQ+nPV; i++)
 	{
 		double dtheta = 0;
@@ -421,13 +419,14 @@ void cofactor(double **matriz, double **inversa, int tamanho, int tamanhoOrigina
   transpose(matriz,fac, inversa, tamanho, tamanhoOriginal);
 }
 
-void multiplyMatrix(int m1, int m2, double **matrizA,
+double ** multiplyMatrix(int m1, int m2, double **matrizA,
               int n1, int n2, double **matrizB)
 {
     int x, i, j;
     double **res = inicializa_Matrix(m1,  n2);
     for (i = 0; i < m1; i++) {
         for (j = 0; j < n2; j++) {
+        	printf("lili %d, %d\n", i, j);
             res[i][j] = 0;
             for (x = 0; x < m2; x++) {
                 *(*(res + i) + j) += *(*(matrizA + i) + x) *
@@ -435,12 +434,7 @@ void multiplyMatrix(int m1, int m2, double **matrizA,
             }
         }
     }
-    for (i = 0; i < m1; i++) {
-        for (j = 0; j < n2; j++) {
-            printf("%lf ", *(*(res + i) + j));
-        }
-        printf("\n");
-    }
+    return res;
 }
 
 int main(int argc, char *argv[])
@@ -451,9 +445,6 @@ int main(int argc, char *argv[])
 	char arquivoNodal[caminhoDadosNodal];
 	decideRede(arquivoBarra, arquivoNodal);
 
-	printf("%s\n", arquivoNodal);
-	printf("%s\n", arquivoBarra);
-
 	leNumeroDeLinhas(file, &linhasBarra, arquivoBarra);
 
 	double **dadosBarra = inicializa_Matrix(linhasBarra, colunaBarra);
@@ -462,56 +453,43 @@ int main(int argc, char *argv[])
 	double **gTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
 	double **bTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
 
+	printf("lolo\n");
+
 	//vetores de tensao nominal de fase
 	double *tensao = inicializaVetor(linhasBarra);
 	double *angulo = inicializaVetor(linhasBarra);
 	
 	leDadosBarra(file, dadosBarra, arquivoBarra);
+	printf("lolo\n");
 	leDadosTrecho(file, gTrechos, bTrechos, arquivoNodal);
+	printf("lolo\n");
 
 	inicializaTensao(tensao, angulo, linhasBarra, dadosBarra); // conforme tabela 4
 	int nPQ = determinaQuantiaBarras(dadosBarra, linhasBarra, 0);
 	int nPV = determinaQuantiaBarras(dadosBarra, linhasBarra, 1);
 	int nEquacoes = 2*nPQ + nPV;
-
+	printf("lolo\n");
 	// potência ativa especificada (apenas para as barras PV)
 	double *pEsp = inicializaVetor(nPV);
 	inicializaPesp(pEsp, linhasBarra, dadosBarra);
-
+	printf("lolo\n");
 	// Vetores para cálculo segundo método de Newton
-	double * f = inicializaVetor(nEquacoes);
-	double ** del = inicializa_Matrix(nEquacoes, nEquacoes);
-	double * delta = inicializaVetor(nEquacoes);
+	double ** f = inicializa_Matrix(nEquacoes, 1);
+	double ** jacobiano = inicializa_Matrix(nEquacoes, nEquacoes);
+	double ** delta = inicializa_Matrix(nEquacoes, 1);
 
 	// Calcula os valores
 	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, linhasBarra);
-	calculaDel(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, del, linhasBarra);
-	
+	printf("lolo\n");
+	calculaJacobiano(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, jacobiano, linhasBarra);
+	printf("lolo\n");
 	// Inversa
-	double **inversa = inicializa_Matrix(3, 3);
-
-	// Resultados -> Delta = (del^-1)*f
-	double **identidade = inicializa_Matrix(3, 3);
-	identidade[0][0] = 2;
-	identidade[0][1] = 1;
-	identidade[0][2] = 3;
-	identidade[1][0] = 1;
-	identidade[1][1] = 5;
-	identidade[1][2] = 9;
-	identidade[2][0] = 1;
-	identidade[2][1] = -7;
-	identidade[2][2] = 2;
-	imprimir_matriz(identidade, 3, 3);
-
-	double **vec = inicializa_Matrix(3, 1);
-	vec[0][0] = 4;
-	vec[1][0] = -2;
-	vec[2][0] = 3;
-
-	multiplyMatrix(3, 3, identidade, 3, 1, vec);
-
-	cofactor(identidade, inversa, 3, 3);
-	imprimir_matriz(inversa, 3, 3);
+	double **inversa = inicializa_Matrix(nEquacoes, nEquacoes);
+	printf("lolo\n");
+	cofactor(jacobiano, inversa, 3, 3);
+	delta = multiplyMatrix(nEquacoes, nEquacoes, inversa, 1, nEquacoes, f);
+	printf("Resultado\n");
+	imprimir_matriz(delta, nEquacoes, 1);
 
 	system("pause");
 	return 0;
