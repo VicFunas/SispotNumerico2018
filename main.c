@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include<math.h>
 #include <string.h>
 
 #define bufSize 1024
@@ -323,6 +324,103 @@ int determinaQuantiaBarras(double **matriz, int linhas, int tipo) {
 	return nP;
 }
 
+double determinant(double **a, int tamanho, int tamanhoOriginal)
+{
+double s = 1, det = 0; 
+double **b = inicializa_Matrix(tamanhoOriginal, tamanhoOriginal);
+int i, j, m, n, c;
+if (tamanho == 1)
+ return (a[0][0]);
+else
+ {
+ det = 0;
+ for (c = 0; c < tamanho; c++)
+  {
+  m = 0;
+  n = 0;
+  for (i = 0; i < tamanho; i++)
+   {
+   for (j = 0; j < tamanho; j++)
+    {
+    b[i][j] = 0;
+    if (i != 0 && j != c)
+     {
+     b[m][n] = a[i][j];
+     if (n < (tamanho - 2))
+      n++;
+     else
+      {
+      n = 0;
+      m++;
+      }
+     }
+    }
+   }
+  det = det + s * (a[0][c] * determinant(b, tamanho - 1, tamanhoOriginal));
+  s = -1 * s;
+  }
+ }
+return (double)det;
+}
+
+/*Finding transpose of matrix*/ 
+void transpose(double **matriz,double **fac, double **inversa, int tamanho, int tamanhoOriginal)
+{
+  int i,j;
+  double **b = inicializa_Matrix(tamanhoOriginal, tamanhoOriginal);
+  double d;
+ 
+  for (i=0;i<tamanho;i++)
+    {
+     for (j=0;j<tamanho;j++)
+       {
+         b[i][j]=fac[j][i];
+        }
+    }
+  d=determinant(matriz,tamanho, tamanhoOriginal);
+  for (i=0;i<tamanho;i++)
+    {
+     for (j=0;j<tamanho;j++)
+       {
+       	inversa[i][j]=b[i][j] / d;
+        }
+    }
+}
+
+void cofactor(double **matriz, double **inversa, int tamanho, int tamanhoOriginal)
+{
+ double **b = inicializa_Matrix(tamanhoOriginal, tamanhoOriginal);
+ double **fac = inicializa_Matrix(tamanhoOriginal, tamanhoOriginal);
+ int p,q,m,n,i,j;
+ for (q=0;q<tamanho;q++)
+ {
+   for (p=0;p<tamanho;p++)
+    {
+     m=0;
+     n=0;
+     for (i=0;i<tamanho;i++)
+     {
+       for (j=0;j<tamanho;j++)
+        {
+          if (i != q && j != p)
+          {
+            b[m][n]=matriz[i][j];
+            if (n<(tamanho-2))
+             n++;
+            else
+             {
+               n=0;
+               m++;
+               }
+            }
+        }
+      }
+      fac[q][p]=(double)pow(-1,q + p) * determinant(b,tamanho-1, tamanhoOriginal);
+    }
+  }
+  transpose(matriz,fac, inversa, tamanho, tamanhoOriginal);
+}
+
 int main(int argc, char *argv[])
 {
 	FILE* file;
@@ -367,25 +465,44 @@ int main(int argc, char *argv[])
 	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, linhasBarra);
 	calculaDel(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, del, linhasBarra);
 
-	printf("\n");
+	//printf("\n");
 	//imprimir_matriz(dadosBarra, linhasBarra, colunaBarra);
-	printf("\n");
+	//printf("\n");
 	//imprimir_matrizAdmitancias(gTrechos, linhasBarra, linhasBarra);
-	printf("\n");
+	//printf("\n");
 	//imprimir_matrizAdmitancias(bTrechos, linhasBarra, linhasBarra);
-	printf("\n");
+	//printf("\n");
 	//imprimir_vetor(tensao, linhasBarra);
-	printf("\n");
+	//printf("\n");
 	//imprimir_vetor(angulo, linhasBarra);
-	printf("\n");
+	//printf("\n");
 	//printf("nPQ = %d", nPQ);
-	printf("\n");
+	//printf("\n");
 	//printf("nPV = %d", nPV);
-	printf("\n");
+	//printf("\n");
 	//imprimir_vetor(f, nEquacoes);
-	printf("\n");
-	imprimir_matriz(del, nEquacoes, nEquacoes);
-	printf("\n");
+	//printf("\n");
+	//imprimir_matriz(del, nEquacoes, nEquacoes);
+	//printf("\n");
+
+	// Inversa
+	double **inversa = inicializa_Matrix(3, 3);
+
+	// Resultados -> Delta = (del^-1)*f
+	double **identidade = inicializa_Matrix(3, 3);
+	identidade[0][0] = 2;
+	identidade[0][1] = 1;
+	identidade[0][2] = 3;
+	identidade[1][0] = 1;
+	identidade[1][1] = 5;
+	identidade[1][2] = 9;
+	identidade[2][0] = 1;
+	identidade[2][1] = -7;
+	identidade[2][2] = 2;
+	imprimir_matriz(identidade, 3, 3);
+
+	cofactor(identidade, inversa, 3, 3);
+	imprimir_matriz(inversa, 3, 3);
 
 	system("pause");
 	return 0;
