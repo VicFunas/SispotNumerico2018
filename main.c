@@ -3,6 +3,7 @@
 
 #define bufSize 1024
 #define colunaBarra 4
+#define colunaNodal 2
 #define caminhoDadosBarra 49
 #define caminhoDadosNodal 42
 
@@ -48,44 +49,67 @@ void decideRede(char *barra, char *nodal) {
 }
 
 
-void leNumeroDeLinhas(FILE *fp, int *linhas, char *barra)
+void leNumeroDeLinhas(FILE *file, int *linhasBarra, char *barra)
 {
-	fopen_s(&fp, barra, "r");
-	if (fp == NULL)
+	fopen_s(&file, barra, "r");
+	if (file == NULL)
 	{ // Open source file.
 		perror("fopen source-file");
 		return;
 	}
 
-	fscanf_s(fp, "%d", linhas);
-	printf("%d\n", *linhas);
+	fscanf_s(file, "%d", linhasBarra);
 
-	fclose(fp);
+	fclose(file);
 }
 
-void leDadosBarra(FILE *fp, double **matriz,  char *barra)
+void leDadosBarra(FILE *file, double **matriz,  char *barra)
 {
 	int numeroBarras = 0;
 	int i, j;
 	int barraNumero;	
 
-	fopen_s(&fp, barra, "r");
-	if (fp == NULL)
+	fopen_s(&file, barra, "r");
+	if (file == NULL)
 	{ // Open source file.
 		perror("fopen source-file");
 		return;
 	}
 
-	fscanf_s(fp, "%d", &numeroBarras);
+	fscanf_s(file, "%d", &numeroBarras);
 
 	for (i = 0; i < numeroBarras; i++) {
-		fscanf_s(fp, "%d", &barraNumero);
+		fscanf_s(file, "%d", &barraNumero);
 		for (j = 0; j < colunaBarra; j++) {
-			fscanf_s(fp, "%lf", &matriz[i][j]);
+			fscanf_s(file, "%lf", &matriz[i][j]);
 		}
 	}
 
-	fclose(fp);
+	fclose(file);
+}
+
+void leDadosTrecho(FILE *file, double **matrizY, double **matrizB, char *nodal)
+{
+	int numeroTrechos = 0;
+	int i, j, linha, coluna;
+
+	fopen_s(&file, nodal, "r");
+	if (file == NULL)
+	{ // Open source file.
+		perror("fopen source-file");
+		return;
+	}
+
+	fscanf_s(file, "%d", &numeroTrechos);
+
+	for (i = 0; i < numeroTrechos; i++) {
+		fscanf_s(file, "%d", &linha);
+		fscanf_s(file, "%d", &coluna);
+		fscanf_s(file, "%lf", &matrizY[linha][coluna]);
+		fscanf_s(file, "%lf", &matrizB[linha][coluna]);
+	}
+
+	fclose(file);
 }
 
 void imprimir_matriz(double **matriz, int linhas, int colunas) {
@@ -93,6 +117,16 @@ void imprimir_matriz(double **matriz, int linhas, int colunas) {
 	for (i = 0; i < linhas; i++) {
 		for (j = 0; j < colunas; j++) {
 			printf("%.3lf ", matriz[i][j]);
+		}
+		printf("\n");
+	}
+}
+
+void imprimir_matrizAdmitancias(double **matriz, int linhas, int colunas) {
+	int i, j;
+	for (i = 0; i < linhas; i++) {
+		for (j = 0; j < colunas; j++) {
+			printf("%.15lf ", matriz[i][j]);
 		}
 		printf("\n");
 	}
@@ -108,23 +142,31 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 		for (j = 0; j< colunasA; j++) A[i][j] = 0;
 	};
 	return A;
-} //*/
+}
 
 int main(int argc, char *argv[])
 {
-	FILE* fp;
+	FILE* file;
 	int linhasBarra;
 	
 	char arquivoBarra[caminhoDadosBarra];
 	char arquivoNodal[caminhoDadosNodal];
 	decideRede(arquivoBarra, arquivoNodal);
-	//printf("%s\n", arquivoBarra);
-	leNumeroDeLinhas(fp, &linhasBarra, arquivoBarra);
-	system("pause");
+	leNumeroDeLinhas(file, &linhasBarra, arquivoBarra);
+
 	double **dadosBarra = inicializa_Matrix(linhasBarra, colunaBarra);
+	double **yTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
+	double **bTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
 	
-	leDadosBarra(fp, dadosBarra, arquivoBarra);
+	leDadosBarra(file, dadosBarra, arquivoBarra);
+	leDadosTrecho(file, yTrechos, bTrechos, arquivoNodal);
+
+	printf("\n");
 	imprimir_matriz(dadosBarra, linhasBarra, colunaBarra);
+	printf("\n");
+	imprimir_matrizAdmitancias(yTrechos, linhasBarra, linhasBarra);
+	printf("\n");
+	imprimir_matrizAdmitancias(bTrechos, linhasBarra, linhasBarra);
 
 	system("pause");
 	return 0;
