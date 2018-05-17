@@ -421,6 +421,28 @@ void cofactor(double **matriz, double **inversa, int tamanho, int tamanhoOrigina
   transpose(matriz,fac, inversa, tamanho, tamanhoOriginal);
 }
 
+void multiplyMatrix(int m1, int m2, double **matrizA,
+              int n1, int n2, double **matrizB)
+{
+    int x, i, j;
+    double **res = inicializa_Matrix(m1,  n2);
+    for (i = 0; i < m1; i++) {
+        for (j = 0; j < n2; j++) {
+            res[i][j] = 0;
+            for (x = 0; x < m2; x++) {
+                *(*(res + i) + j) += *(*(matrizA + i) + x) *
+                                     *(*(matrizB + x) + j);
+            }
+        }
+    }
+    for (i = 0; i < m1; i++) {
+        for (j = 0; j < n2; j++) {
+            printf("%lf ", *(*(res + i) + j));
+        }
+        printf("\n");
+    }
+}
+
 int main(int argc, char *argv[])
 {
 	FILE* file;
@@ -464,27 +486,7 @@ int main(int argc, char *argv[])
 	// Calcula os valores
 	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, linhasBarra);
 	calculaDel(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, del, linhasBarra);
-
-	//printf("\n");
-	//imprimir_matriz(dadosBarra, linhasBarra, colunaBarra);
-	//printf("\n");
-	//imprimir_matrizAdmitancias(gTrechos, linhasBarra, linhasBarra);
-	//printf("\n");
-	//imprimir_matrizAdmitancias(bTrechos, linhasBarra, linhasBarra);
-	//printf("\n");
-	//imprimir_vetor(tensao, linhasBarra);
-	//printf("\n");
-	//imprimir_vetor(angulo, linhasBarra);
-	//printf("\n");
-	//printf("nPQ = %d", nPQ);
-	//printf("\n");
-	//printf("nPV = %d", nPV);
-	//printf("\n");
-	//imprimir_vetor(f, nEquacoes);
-	//printf("\n");
-	//imprimir_matriz(del, nEquacoes, nEquacoes);
-	//printf("\n");
-
+	
 	// Inversa
 	double **inversa = inicializa_Matrix(3, 3);
 
@@ -500,6 +502,13 @@ int main(int argc, char *argv[])
 	identidade[2][1] = -7;
 	identidade[2][2] = 2;
 	imprimir_matriz(identidade, 3, 3);
+
+	double **vec = inicializa_Matrix(3, 1);
+	vec[0][0] = 4;
+	vec[1][0] = -2;
+	vec[2][0] = 3;
+
+	multiplyMatrix(3, 3, identidade, 3, 1, vec);
 
 	cofactor(identidade, inversa, 3, 3);
 	imprimir_matriz(inversa, 3, 3);
