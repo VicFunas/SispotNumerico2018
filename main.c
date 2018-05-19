@@ -196,7 +196,7 @@ void imprimir_matriz(double **matriz, int linhas, int colunas) {
 	int i, j;
 	for (i = 0; i < linhas; i++) {
 		for (j = 0; j < colunas; j++) {
-			printf("%.3lf ", matriz[i][j]);
+			printf("%11.3lf ", matriz[i][j]);
 		}
 		printf("\n");
 	}
@@ -287,89 +287,118 @@ void calculaF(int nPQ, int nPV, double*jIndice, double ** matrizB,  double ** ma
 	}
 }
 
-void calculaJacobiano(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double **del, int tamanho) {
+void calculaJacobiano(int nPQ, int nPV, double*jIndice, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double **del, int tamanho) {
+	
+	// Cálculo de dfp (dfp/dtheta e dfp/dV)
 	for (int i = 0; i < nPQ+nPV; i++)
 	{
-		double dtheta = 0;
-		for (int j = 0; j < 2*nPQ + nPV; j++)
+		int j = (int) jIndice[i];
+		//printf("j = %d\n", j);
+		double dtheta;
+		for (int c = 0; c < 2*nPQ + nPV; c++)
 		{
-			if(i == j) { // Eq (13) 1 -> dfpj/dthetaj
+			if(c == i) { // Eq (13) 1 -> dfpj/dthetaj
 				dtheta = 0;
 				for (int k = 0; k < tamanho; k++)
 				{
-					if(k != i) {
-						double thetaKJ = fase[k] - fase[i];
-						dtheta+= tensao[k]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+					double thetaKJ;
+					if(k != j) {
+						thetaKJ = fase[k] - fase[j];
+						dtheta += tensao[k]*(matrizG[j][k]*sin(thetaKJ) + matrizB[j][k]*cos(thetaKJ));
+						
 					}
 				}
-				del[i][j] = tensao[j]*dtheta;
+				del[i][c] = tensao[j]*dtheta;
+				//printf("del[%d][%d] = %lf\n", i, c, del[i][c]);
 			}
-			else if (j == nPV + nPQ + i) // Eq (13) 2 -> dfpj/dVj
+
+			else if (c == nPV + nPQ + i) // Eq (13) 2 -> dfpj/dVj 
 			{
 				dtheta = 0;
 				for (int k = 0; k < tamanho; k++)
 				{
-					if(k != i) {
-						double thetaKJ = fase[k] - fase[i];
-						dtheta+= tensao[k]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+					double thetaKJ;
+					if(k != j) {
+						//printf("k = %d\n", k);
+						thetaKJ = fase[k] - fase[j];
+						dtheta+= tensao[k]*(matrizG[j][k]*cos(thetaKJ) - matrizB[j][k]*sin(thetaKJ));
 					}
 				}
-				del[i][j] = dtheta + 2*tensao[i]*matrizG[i][i];
+				//printf("soma = %lf\n", dtheta);
+				//printf("tensao = %lf\n", tensao[j]);
+				del[i][c] = dtheta + 2*tensao[j]*matrizG[j][j];
+				//printf("del[%d][%d] = %lf\n", i, c, del[i][c]);
 			}
-			else if (j < nPV + nPQ) // Eq (13) 3 -> dpfj/dthetak
+
+			else if (c < nPV + nPQ) // Eq (13) 3 -> dpfj/dthetak
 			{
-				int k = j;
-				double thetaKJ = fase[k] - fase[i];
-				del[i][j] = (-1)*tensao[i]*tensao[k]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+				int k = (int)jIndice[c];
+				double thetaKJ = fase[k] - fase[j];
+				del[i][c] = (-1)*tensao[j]*tensao[k]*(matrizG[j][k]*sin(thetaKJ) + matrizB[j][k]*cos(thetaKJ));
+				//printf("del[%d][%d] = %lf\n", i, c, del[i][c]);
 			}
 			else // Eq (13) 4 -> dfpj/dVk
 			{
-				int k = j - nPQ - nPV;
-				double thetaKJ = fase[k] - fase[i];
-				del[i][j] = tensao[i]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+				int k = (int)jIndice[c - nPQ - nPV];
+				double thetaKJ = fase[k] - fase[j];
+				del[i][c] = tensao[j]*(matrizG[j][k]*cos(thetaKJ) - matrizB[j][k]*sin(thetaKJ));
+				//printf("del[%d][%d] = %lf\n", i, c, del[i][c]);
 			}
 		}
 	}
 
+	// Cálculo de dfq (dfq/dtheta e dfq/dV)
 	for (int i = 0; i < nPQ; i++)
 	{
-		double dtheta = 0;
-		for (int j = 0; j < 2*nPQ + nPV; j++)
+		int j = (int) jIndice[i];
+		//printf("j = %d\n", j);
+		double dtheta;
+		for (int c = 0; c < 2*nPQ + nPV; c++)
 		{
-			if(i == j) { // Eq (14) 1 -> dfqj/dthetaj
+			if(c == i) { // Eq (14) 1 -> dfqj/dthetaj
 				dtheta = 0;
 				for (int k = 0; k < tamanho; k++)
 				{
-					if(k != i) {
-						double thetaKJ = fase[k] - fase[i];
-						dtheta+= tensao[k]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+					if(k != j) {
+						double thetaKJ = fase[k] - fase[j];
+						dtheta+= tensao[k]*(matrizG[j][k]*cos(thetaKJ) - matrizB[j][k]*sin(thetaKJ));
 					}
 				}
-				del[i][j] = tensao[i]*dtheta;
+				del[nPQ+nPV+i][c] = tensao[j]*dtheta;
+				//printf("del[%d][%d] = %lf\n", nPQ+nPV+i, c, del[nPQ+nPV+i][c]);
 			}
-			else if (j == nPV + nPQ + i) // Eq (14) 2 -> dfpj/dVj
+
+			else if (c == nPV + nPQ + i) // Eq (14) 2 -> dfqj/dVj
 			{
 				dtheta = 0;
 				for (int k = 0; k < tamanho; k++)
 				{
-					if(k != i) {
-						double thetaKJ = fase[k] - fase[i];
-						dtheta+= tensao[k]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+					if(k != j) {
+						//printf("k = %d\n", k);
+						double thetaKJ = fase[k] - fase[j];
+						dtheta+= tensao[k]*(matrizG[j][k]*sin(thetaKJ) + matrizB[j][k]*cos(thetaKJ));
 					}
 				}
-				del[i][j] = -dtheta - 2*tensao[i]*matrizB[i][i];
+				//printf("soma = %lf\n", dtheta);
+				del[nPQ+nPV+i][c] = -dtheta - 2*tensao[j]*matrizB[j][j];
+				//printf("del[%d][%d] = %lf\n", nPQ+nPV+i, c, del[nPQ+nPV+i][c]);
 			}
-			else if (j < nPV + nPQ) // Eq (14) 3 -> dpfj/dthetak
+
+			else if (c < nPV + nPQ) // Eq (14) 3 -> dfqj/dthetak
 			{
-				int k = j;
-				double thetaKJ = fase[k] - fase[i];
-				del[i][j] = (-1)*tensao[i]*tensao[k]*(matrizG[i][k]*cos(thetaKJ) - matrizB[i][k]*sin(thetaKJ));
+				int k = (int)jIndice[c];
+				//printf("k = %d\n", k);
+				double thetaKJ = fase[k] - fase[j];
+				del[nPQ+nPV+i][c] = (-1)*tensao[j]*tensao[k]*(matrizG[j][k]*cos(thetaKJ) - matrizB[j][k]*sin(thetaKJ));
+				//printf("del[%d][%d] = %lf\n", nPQ+nPV+i, c, del[nPQ+nPV+i][c]);
 			}
+
 			else // Eq (14) 4 -> dfpj/dVk
 			{
-				int k = j - nPQ - nPV;
-				double thetaKJ = fase[k] - fase[i];
-				del[i][j] = (-1)*tensao[i]*(matrizG[i][k]*sin(thetaKJ) + matrizB[i][k]*cos(thetaKJ));
+				int k = (int)jIndice[c - nPQ - nPV];
+				double thetaKJ = fase[k] - fase[j];
+				del[nPQ+nPV+i][c] = (-1)*tensao[j]*(matrizG[j][k]*sin(thetaKJ) + matrizB[j][k]*cos(thetaKJ));
+				//printf("del[%d][%d] = %lf\n", nPQ+nPV+i, c, del[nPQ+nPV+i][c]);
 			}
 		}
 	}
@@ -539,7 +568,12 @@ int main(int argc, char *argv[])
 	printf("\nVetor f\n");
 	imprimir_matriz(f, nEquacoes, 1);
 	printf("\n");
-	calculaJacobiano(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, jacobiano, nBarras);
+	
+	calculaJacobiano(nPQ, nPV, jIndice, bTrechos,  gTrechos, tensao, angulo, jacobiano, nBarras);
+	printf("\nMatriz Jacobiana\n");
+	imprimir_matriz(jacobiano, nEquacoes, nEquacoes);
+	printf("\n");
+
 	// Inversa
 	double **inversa = inicializa_Matrix(nEquacoes, nEquacoes);
 	cofactor(jacobiano, inversa, 3, 3);
