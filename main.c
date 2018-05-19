@@ -49,9 +49,13 @@ void decideRede(char *barra, char *nodal) {
     }
 }
 
+#pragma region leiturasArquivos
 
-void leNumeroDeLinhas(FILE *file, int *linhasBarra, char *barra)
+void leNumeroDeLinhas(FILE *file, char *barra, int *nBarras, int *nPQ, int *nPV) // nBarras, nPQ, nPV, j
 {
+	int i, linha;
+	double tipo, par1, par2, tensao;
+
 	fopen_s(&file, barra, "r");
 	if (file == NULL)
 	{ // Open source file.
@@ -59,7 +63,23 @@ void leNumeroDeLinhas(FILE *file, int *linhasBarra, char *barra)
 		return;
 	}
 
-	fscanf_s(file, "%d", linhasBarra);
+	fscanf_s(file, "%d", nBarras);
+	*nPQ = 0;
+	*nPV = 0;
+
+	for (i = 0; i < *nBarras; i++) {
+		fscanf_s(file, "%d", &linha);
+		fscanf_s(file, "%lf", &tipo);
+		fscanf_s(file, "%lf", &tensao);
+		fscanf_s(file, "%lf", &par1);
+		fscanf_s(file, "%lf", &par2);
+		if(tipo == 0){
+			*nPQ = *nPQ + 1;
+		}
+		else if(tipo == 1){
+			*nPV = *nPV + 1;
+		}
+	}
 
 	fclose(file);
 }
@@ -112,6 +132,8 @@ void leDadosTrecho(FILE *file, double **matrizG, double **matrizB, char *nodal)
 
 	fclose(file);
 }
+
+#pragma endregion leiturasArquivos
 
 void inicializaTensao(double *tensao, double *angulo, int tamanho, double **matriz) {
 	for (int i = 0; i < tamanho; ++i)
@@ -192,6 +214,8 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 	};
 	return A;
 }
+
+#pragma region calculoMatrizesMetodoNewton
 
 void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double **f, int tamanho) {
 	for (int i = 0; i < nPQ+nPV; i++)
@@ -310,17 +334,9 @@ void calculaJacobiano(int nPQ, int nPV, double ** matrizB,  double ** matrizG, d
 	}
 }
 
-int determinaQuantiaBarras(double **matriz, int linhas, int tipo) {
-	int nP = 0;
-	for (int i = 0; i < linhas; ++i)
-	{
-		if(matriz[i][0] == tipo) {
-			//printf("67 patinete\n");
-			nP++;
-		}
-	}
-	return nP;
-}
+#pragma endregion calculoMatrizesMetodoNewton
+
+#pragma region operacoresMatriciais
 
 double determinant(double **a, int tamanho, int tamanhoOriginal)
 {
@@ -426,7 +442,6 @@ double ** multiplyMatrix(int m1, int m2, double **matrizA,
     double **res = inicializa_Matrix(m1,  n2);
     for (i = 0; i < m1; i++) {
         for (j = 0; j < n2; j++) {
-        	printf("lili %d, %d\n", i, j);
             res[i][j] = 0;
             for (x = 0; x < m2; x++) {
                 *(*(res + i) + j) += *(*(matrizA + i) + x) *
@@ -437,60 +452,62 @@ double ** multiplyMatrix(int m1, int m2, double **matrizA,
     return res;
 }
 
+#pragma endregion operacoresMatriciais
+
 int main(int argc, char *argv[])
 {
 	FILE* file;
-	int linhasBarra;
+	int nBarras;
+	int nPQ = -1;
+	int nPV = -1;
 	char arquivoBarra[caminhoDadosBarra];
 	char arquivoNodal[caminhoDadosNodal];
 	decideRede(arquivoBarra, arquivoNodal);
 
-	leNumeroDeLinhas(file, &linhasBarra, arquivoBarra);
+	leNumeroDeLinhas(file, arquivoBarra, &nBarras, &nPQ, &nPV);
 
-	double **dadosBarra = inicializa_Matrix(linhasBarra, colunaBarra);
+	double **dadosBarra = inicializa_Matrix(nBarras, colunaBarra);
 
 	// matrizes de admitancia
-	double **gTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
-	double **bTrechos = inicializa_Matrix(linhasBarra, linhasBarra);
+	double **gTrechos = inicializa_Matrix(nBarras, nBarras);
+	double **bTrechos = inicializa_Matrix(nBarras, nBarras);
 
-	printf("lolo\n");
+	//vetores auxiliares
+	double *tensao = inicializaVetor(nBarras);
+	double *angulo = inicializaVetor(nBarras);
+	double *pEsp = inicializaVetor(nPV);
 
-	//vetores de tensao nominal de fase
-	double *tensao = inicializaVetor(linhasBarra);
-	double *angulo = inicializaVetor(linhasBarra);
 	
 	leDadosBarra(file, dadosBarra, arquivoBarra);
-	printf("lolo\n");
 	leDadosTrecho(file, gTrechos, bTrechos, arquivoNodal);
-	printf("lolo\n");
 
-	inicializaTensao(tensao, angulo, linhasBarra, dadosBarra); // conforme tabela 4
-	int nPQ = determinaQuantiaBarras(dadosBarra, linhasBarra, 0);
-	int nPV = determinaQuantiaBarras(dadosBarra, linhasBarra, 1);
-	int nEquacoes = 2*nPQ + nPV;
-	printf("lolo\n");
+	inicializaTensao(tensao, angulo, nBarras, dadosBarra); // conforme tabela 4
+	int nEquacoes = 2*(nPQ) + nPV;
+
 	// potência ativa especificada (apenas para as barras PV)
-	double *pEsp = inicializaVetor(nPV);
-	inicializaPesp(pEsp, linhasBarra, dadosBarra);
-	printf("lolo\n");
+	
+	inicializaPesp(pEsp, nBarras, dadosBarra);
+	
 	// Vetores para cálculo segundo método de Newton
 	double ** f = inicializa_Matrix(nEquacoes, 1);
 	double ** jacobiano = inicializa_Matrix(nEquacoes, nEquacoes);
 	double ** delta = inicializa_Matrix(nEquacoes, 1);
 
 	// Calcula os valores
-	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, linhasBarra);
-	printf("lolo\n");
-	calculaJacobiano(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, jacobiano, linhasBarra);
-	printf("lolo\n");
+	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, nBarras);
+	printf("\nVetor f\n");
+	imprimir_matriz(f, nEquacoes, 1);
+	printf("\n");
+	calculaJacobiano(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, jacobiano, nBarras);
 	// Inversa
 	double **inversa = inicializa_Matrix(nEquacoes, nEquacoes);
-	printf("lolo\n");
 	cofactor(jacobiano, inversa, 3, 3);
 	delta = multiplyMatrix(nEquacoes, nEquacoes, inversa, 1, nEquacoes, f);
 	printf("Resultado\n");
 	imprimir_matriz(delta, nEquacoes, 1);
-
+	printf("\n");
 	system("pause");
+
+	// ^ uma iteração -> implementar para fazer em várias (cada iteração recebe tensao e theta, sendo os novos como o recebido + delta)
 	return 0;
 }
