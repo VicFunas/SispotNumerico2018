@@ -135,6 +135,8 @@ void leDadosTrecho(FILE *file, double **matrizG, double **matrizB, char *nodal)
 
 #pragma endregion leiturasArquivos
 
+#pragma region inicializaVetoresAuxiliares
+
 void inicializaTensao(double *tensao, double *angulo, int tamanho, double **matriz) {
 	for (int i = 0; i < tamanho; ++i)
 	{
@@ -168,6 +170,28 @@ void inicializaPesp(double *pEsp, int tamanho, double **matriz) {
 	}
 }
 
+void inicializaJ(double *j, int tamanho, double **matriz) {
+	int k = 0;
+	for (int i = 0; i < tamanho; ++i)
+	{
+		if(matriz[i][0] == 0) { // colocar primeiro índices de PQ
+			j[k] = i;
+			k++;
+		}
+	}
+	for (int i = 0; i < tamanho; ++i)
+	{
+		if(matriz[i][0] == 1) { // colocar depois índices de PV
+			j[k] = i;
+			k++;
+		}
+	}
+}
+
+#pragma endregion inicializaVetoresAuxiliares
+
+#pragma region imprimeMatrizesEVetores
+
 void imprimir_matriz(double **matriz, int linhas, int colunas) {
 	int i, j;
 	for (i = 0; i < linhas; i++) {
@@ -194,6 +218,10 @@ void imprimir_vetor(double *vetor, int tamanho) {
 	}
 }
 
+#pragma endregion imprimeMatrizesEVetores
+
+#pragma region criaMatrizesEVetores
+
 double * inicializaVetor(int tamanho) {
 	double * vetor = (double *)malloc(tamanho * sizeof(double));
 	for (int i = 0; i < tamanho; ++i)
@@ -214,6 +242,8 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 	};
 	return A;
 }
+
+#pragma endregion criaMatrizesEVetores
 
 #pragma region calculoMatrizesMetodoNewton
 
@@ -476,18 +506,18 @@ int main(int argc, char *argv[])
 	double *tensao = inicializaVetor(nBarras);
 	double *angulo = inicializaVetor(nBarras);
 	double *pEsp = inicializaVetor(nPV);
-
+	double *j = inicializaVetor(nPQ+nPV);
 	
 	leDadosBarra(file, dadosBarra, arquivoBarra);
 	leDadosTrecho(file, gTrechos, bTrechos, arquivoNodal);
-
-	inicializaTensao(tensao, angulo, nBarras, dadosBarra); // conforme tabela 4
+	
 	int nEquacoes = 2*(nPQ) + nPV;
 
-	// potência ativa especificada (apenas para as barras PV)
-	
+	// Atribução de valores aos vetores auxiliares
+	inicializaTensao(tensao, angulo, nBarras, dadosBarra); // conforme tabela 4
 	inicializaPesp(pEsp, nBarras, dadosBarra);
-	
+	inicializaJ(j, nBarras, dadosBarra);
+
 	// Vetores para cálculo segundo método de Newton
 	double ** f = inicializa_Matrix(nEquacoes, 1);
 	double ** jacobiano = inicializa_Matrix(nEquacoes, nEquacoes);
