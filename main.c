@@ -247,32 +247,43 @@ double ** inicializa_Matrix(int linhasA, int colunasA) {
 
 #pragma region calculoMatrizesMetodoNewton
 
-void calculaF(int nPQ, int nPV, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double **f, int tamanho) {
+void calculaF(int nPQ, int nPV, double*jIndice, double ** matrizB,  double ** matrizG, double *tensao, double *fase, double *pEsp, double **f, int tamanho) {
+	
+	// Cálculo de fpj
 	for (int i = 0; i < nPQ+nPV; i++)
 	{
+		int j = (int) jIndice[i];
+		//printf("j = %d\n", j);
 		double fp = 0;
-		for (int j = 0; j < tamanho; j++)
+		for (int k = 0; k < tamanho; k++)
 		{
-			double thetaKJ = fase[j] - fase[i];
-			fp += tensao[j]*(matrizG[i][j]*cos(thetaKJ) - matrizB[i][j]*sin(thetaKJ));
+			double thetaKJ = fase[k] - fase[j];
+			fp += tensao[k]*(matrizG[j][k]*cos(thetaKJ) - matrizB[j][k]*sin(thetaKJ));
 		}
-		f[i][0] = tensao[i]*fp;
+		f[i][0] = tensao[j]*fp;
+		
 	}
 	// Como os nPV ultimos correspondem às barras PV, em que a potência especificada não é necessariamente nula
 	for (int i = 0; i < nPV; ++i)
 	{
-		f[nPQ+i][0] = f[nPQ+nPV][0] - pEsp[i];
+		f[nPQ+i][0] = f[nPQ+i][0] - pEsp[i];
 	}
 
+	// Cálculo de fqj
 	for (int i = 0; i < nPQ; i++)
 	{
+		int j = (int) jIndice[i];
 		double fq = 0;
-		for (int j = 0; j < tamanho; j++)
+		for (int k = 0; k < tamanho; k++)
 		{
-			double thetaKJ = fase[j] - fase[i];
-			fq += tensao[j]*(matrizG[i][j]*sin(thetaKJ) + matrizB[i][j]*cos(thetaKJ));
+			double thetaKJ = fase[k] - fase[j];
+			//printf("fatorG[%d][%d] = %lf\n", j, k, matrizG[j][k]*sin(thetaKJ));
+			//printf("fatorB[%d][%d] = %lf\n", j, k, matrizB[j][k]*cos(thetaKJ));
+			fq += tensao[k]*(matrizG[j][k]*sin(thetaKJ) + matrizB[j][k]*cos(thetaKJ));
 		}
-		f[nPQ+nPV+i][0] = (-1)*tensao[i]*fq;
+		//printf("somaFQ = %lf\n", fq);
+		f[nPQ+nPV+i][0] = (-1)*tensao[j]*fq;
+		//printf("f[%d][0] %lf\n", nPQ+nPV+i, f[nPQ+nPV+i][0]);
 	}
 }
 
@@ -506,7 +517,7 @@ int main(int argc, char *argv[])
 	double *tensao = inicializaVetor(nBarras);
 	double *angulo = inicializaVetor(nBarras);
 	double *pEsp = inicializaVetor(nPV);
-	double *j = inicializaVetor(nPQ+nPV);
+	double *jIndice = inicializaVetor(nPQ+nPV);
 	
 	leDadosBarra(file, dadosBarra, arquivoBarra);
 	leDadosTrecho(file, gTrechos, bTrechos, arquivoNodal);
@@ -516,7 +527,7 @@ int main(int argc, char *argv[])
 	// Atribução de valores aos vetores auxiliares
 	inicializaTensao(tensao, angulo, nBarras, dadosBarra); // conforme tabela 4
 	inicializaPesp(pEsp, nBarras, dadosBarra);
-	inicializaJ(j, nBarras, dadosBarra);
+	inicializaJ(jIndice, nBarras, dadosBarra);
 
 	// Vetores para cálculo segundo método de Newton
 	double ** f = inicializa_Matrix(nEquacoes, 1);
@@ -524,7 +535,7 @@ int main(int argc, char *argv[])
 	double ** delta = inicializa_Matrix(nEquacoes, 1);
 
 	// Calcula os valores
-	calculaF(nPQ, nPV, bTrechos,  gTrechos, tensao, angulo, pEsp, f, nBarras);
+	calculaF(nPQ, nPV, jIndice, bTrechos,  gTrechos, tensao, angulo, pEsp, f, nBarras);
 	printf("\nVetor f\n");
 	imprimir_matriz(f, nEquacoes, 1);
 	printf("\n");
